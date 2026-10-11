@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% set active_menu = "dashboard" %}
+
+{% block title %}{{ app_name }} — Dashboard{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="ep-card overflow-hidden bg-gradient-to-r from-teal-700 to-teal-500 p-7 text-white">
+        <p class="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-teal-100">
+            Dashboard Utama
+        </p>
+
+        <h1 class="text-3xl font-black tracking-tight">
+            Monitoring Pelayanan Puskesmas
+        </h1>
+
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-teal-50">
+            Pantau target, capaian, dan persentase Standar Pelayanan Minimal
+            Puskesmas secara terintegrasi berdasarkan data E-PUSBONAT.
+        </p>
+
+        <p class="mt-5 text-sm font-extrabold tracking-wide">
+            KAMI SIAP MELAYANI ANDA DENGAN RAPI.
+        </p>
+    </div>
+
+
+    <!-- FILTER -->
+    <div class="ep-card p-6">
+
+        <div class="mb-5">
+            <h2 class="text-lg font-extrabold text-slate-900">
+                Filter Periode
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                Gunakan filter untuk melihat monitoring SPM pada periode tertentu.
+            </p>
+        </div>
+
+        <form method="get" action="/" class="grid gap-4 md:grid-cols-[1fr_1fr_auto_auto]">
+
+            <div>
+                <label for="start_date"
+                       class="mb-2 block text-sm font-bold text-slate-700">
+                    Tanggal Mulai
+                </label>
+
+                <input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    value="{{ start_date or '' }}"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                >
+            </div>
+
+            <div>
+                <label for="end_date"
+                       class="mb-2 block text-sm font-bold text-slate-700">
+                    Tanggal Akhir
+                </label>
+
+                <input
+                    id="end_date"
+                    name="end_date"
+                    type="date"
+                    value="{{ end_date or '' }}"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+                >
+            </div>
+
+            <div class="flex items-end">
+                <button
+                    type="submit"
+                    class="w-full rounded-xl bg-teal-600 px-6 py-3 text-sm font-extrabold text-white transition hover:bg-teal-700"
+                >
+                    Terapkan
+                </button>
+            </div>
+
+            <div class="flex items-end">
+                <a
+                    href="/"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-6 py-3 text-center text-sm font-extrabold text-slate-700 transition hover:bg-slate-50"
+                >
+                    Reset
+                </a>
+            </div>
+
+        </form>
+    </div>
+
+
+    <!-- SUMMARY -->
+    <div class="grid gap-4 md:grid-cols-3">
+
+        <div class="ep-card p-5">
+            <p class="text-sm font-bold text-slate-500">
+                Total Indikator
+            </p>
+
+            <p class="mt-2 text-3xl font-black text-slate-900">
+                {{ dashboard|length }}
+            </p>
+
+            <p class="mt-1 text-xs text-slate-400">
+                Indikator SPM aktif
+            </p>
+        </div>
+
+        <div class="ep-card p-5">
+            <p class="text-sm font-bold text-slate-500">
+                Indikator Tercapai
+            </p>
+
+            <p class="mt-2 text-3xl font-black text-teal-600">
+                {{ dashboard|selectattr("status", "equalto", "Tercapai")|list|length }}
+            </p>
+
+            <p class="mt-1 text-xs text-slate-400">
+                Capaian ≥ 100%
+            </p>
+        </div>
+
+        <div class="ep-card p-5">
+            <p class="text-sm font-bold text-slate-500">
+                Perlu Perhatian
+            </p>
+
+            <p class="mt-2 text-3xl font-black text-amber-500">
+                {{ dashboard|selectattr("status", "equalto", "Perlu Perhatian")|list|length }}
+            </p>
+
+            <p class="mt-1 text-xs text-slate-400">
+                Capaian 50–74,99%
+            </p>
+        </div>
+
+    </div>
+
+
+    <!-- BAR CHART -->
+    <div class="ep-card p-6">
+
+        <div class="mb-6">
+            <h2 class="text-lg font-extrabold text-slate-900">
+                Capaian SPM
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                Perbandingan persentase capaian seluruh indikator SPM.
+            </p>
+        </div>
+
+        <div class="relative h-[420px]">
+            <canvas id="spmChart"></canvas>
+        </div>
+
+    </div>
+
+
+    <!-- TABLE -->
+    <div class="ep-card overflow-hidden">
+
+        <div class="border-b border-slate-100 p-6">
+            <h2 class="text-lg font-extrabold text-slate-900">
+                Monitoring 12 Indikator SPM
+            </h2>
+
+            <p class="mt-1 text-sm text-slate-500">
+                Data diperbarui berdasarkan database E-PUSBONAT.
+            </p>
+        </div>
+
+        <div class="overflow-x-auto">
+
+            <table class="w-full min-w-[800px] text-sm">
+
+                <thead class="bg-slate-50 text-left">
+                    <tr>
+                        <th class="px-6 py-4 font-extrabold text-slate-600">Kode</th>
+                        <th class="px-6 py-4 font-extrabold text-slate-600">Indikator</th>
+                        <th class="px-6 py-4 text-right font-extrabold text-slate-600">Target</th>
+                        <th class="px-6 py-4 text-right font-extrabold text-slate-600">Capaian</th>
+                        <th class="px-6 py-4 text-right font-extrabold text-slate-600">Persentase</th>
+                        <th class="px-6 py-4 text-center font-extrabold text-slate-600">Status</th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-100">
+
+                    {% for item in dashboard %}
+
+                    <tr class="transition hover:bg-slate-50">
+
+                        <td class="px-6 py-4">
+                            <span class="rounded-lg bg-teal-50 px-3 py-1 text-xs font-black text-teal-700">
+                                {{ item.code }}
+                            </span>
+                        </td>
+
+                        <td class="max-w-md px-6 py-4 font-bold text-slate-800">
+                            {{ item.name }}
+                        </td>
+
+                        <td class="px-6 py-4 text-right font-semibold text-slate-600">
+                            {{ item.target|round(2) }}
+                        </td>
+
+                        <td class="px-6 py-4 text-right font-semibold text-teal-700">
+                            {{ item.coverage|round(2) }}
+                        </td>
+
+                        <td class="px-6 py-4 text-right font-black text-slate-900">
+                            {{ item.percentage|round(2) }}%
+                        </td>
+
+                        <td class="px-6 py-4 text-center">
+
+                            {% if item.status == "Tercapai" %}
+                                <span class="rounded-full bg-teal-100 px-3 py-1 text-xs font-black text-teal-700">
+                                    Tercapai
+                                </span>
+
+                            {% elif item.status == "Baik" %}
+                                <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
+                                    Baik
+                                </span>
+
+                            {% elif item.status == "Perlu Perhatian" %}
+                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-700">
+                                    Perlu Perhatian
+                                </span>
+
+                            {% else %}
+                                <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">
+                                    Rendah
+                                </span>
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+    const spmData = {{ dashboard | tojson }};
+
+    const labels = spmData.map(item => item.code);
+    const percentages = spmData.map(item => item.percentage);
+
+    const canvas = document.getElementById("spmChart");
+
+    if (canvas) {
+        new Chart(canvas, {
+            type: "bar",
+
+            data: {
+                labels: labels,
+
+                datasets: [{
+                    label: "Capaian (%)",
+                    data: percentages,
+                    borderRadius: 8
+                }]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: 100,
+                        ticks: {
+                            callback: value => value + "%"
+                        }
+                    }
+                },
+
+                plugins: {
+                    legend: {
+                        display: true
+                    },
+
+                    tooltip: {
+                        callbacks: {
+                            label: context => `${context.raw}%`
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+{% endblock %}
+
+
+
+
+
+
+
